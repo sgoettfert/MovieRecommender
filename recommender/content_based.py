@@ -5,86 +5,74 @@ from scipy.stats.stats import pearsonr
 from collections import OrderedDict
 from itertools import *
 
+import operator
+import scipy as sc
+import numpy as np
+
 
 def build_users(ratings: [Rating]):
     users = {}
 
     for rating in ratings:
-
         if rating.user_id not in users:
             users[rating.user_id] = User(rating.user_id)
-        users.get(rating.user_id).add_rating(rating.movie_id, rating)
+        users[rating.user_id].add_rating(rating.movie_id, int(rating.rating))
 
-    # TODO: fill dict users with key-value pairs of user_id and the user object with its ratings
-    # goal: user should later be accessible by its ID
-    # after users is completely filled, call 'calc_avg_rating' on each User object
+    for k, v in users.items():
+        v.calc_avg_rating()
 
     return users
 
 
 def filter_users(users: [User], movie_id):
-    filtered = [User]
+    filtered = []
 
     for user in users:
-        if not user.get_rating(movie_id):
+        if user.get_rating(movie_id):
             filtered.append(user)
-
-    # TODO: filter users by whether they have rated the given movie
 
     return filtered
 
 
-def calc_similarity(user_a: [User], user_b: [User]):
+def calc_similarity(user_a: User, user_b: User):
 
-    ratings_a = {}
-    ratings_b = {}
+    ratings_a = []
+    ratings_b = []
 
     for ratingA in user_a.ratings:
         for ratingB in user_b.ratings:
-            if ratingA.movie_id == ratingB.movie_id:
-                ratings_a = ratingA.rating
-                ratings_b = ratingB.rating
+            if ratingA == ratingB:
+                ratings_a.append(user_a.ratings[ratingA])
+                ratings_b.append(user_b.ratings[ratingA])
 
-    # TODO: calculate pearson coefficient and return the coefficient
-    # see 'pearson correlation' in scipy
-
-    return pearsonr(ratings_a, ratings_b)
+    # omit the p-value which would be at position 1 from result of pearsonr()
+    return pearsonr(sc.array(ratings_a).astype(np.float), sc.array(ratings_b).astype(np.float))[0]
 
 
-def calc_similarities(users: [User], user: [User]):
+def calc_similarities(users: [User], user: User):
     similarities = {}
 
     for u in users:
         similarities[u.user_id] = calc_similarity(u, user)
 
-    # TODO: fill 'similarities' with pairs of user_id and similarity to the given user
-    # e.g. { user_1 : 0.87, user_2 : 0.34, ... }
-    # actual calculation is done in 'calc_similarity()'
-
     return similarities
 
 
 def nearest_neighbors(user_similarities, k):
+    sorted_users = sorted(user_similarities.items(), key=operator.itemgetter(1))
 
-    sorted_user_sims = OrderedDict(sorted(user_similarities.items(), key=lambda x: x[1]))
-
-    # TODO: sort users according to similarity and return sorted dictionary containing the k most similar
-    # look for built-in function
-
-    return OrderedDict(islice(sorted_user_sims.iteritems(), k))
+    return sorted_users[0:k]
 
 
 def calc_prediction(neighbors, filtered, movie_id):
-    # TODO: calculate the rating by given information about similarities
+    denominator = 0.0
+    numerator = 0.0
 
-    denominator = 0
-    numerator = 0
-
-    for k,v in neighbors:
+    for k, v in neighbors:
         for user in filtered:
             if k == user.user_id:
                 numerator += v * (user.get_rating(movie_id) - user.avg_rating)
-                denominator += v
+                denominator += float(v)
 
     return numerator / denominator
 
@@ -93,7 +81,7 @@ def recommend(ratings: [Rating], predicts: [Predict]):
 
     # value for neighbours
     k = 100
-    predictions = [Rating]
+    predictions = []
 
     # build user objects from bare ratings
     users = build_users(ratings)
@@ -110,9 +98,15 @@ def recommend(ratings: [Rating], predicts: [Predict]):
         # get k nearest neighbors
         neighbors = nearest_neighbors(similarities, k)
 
-        # calculate a rating by given knowledge
-        rating = users[predict.user_id].get_rating(predict.movie_id) + calc_prediction(neighbors, filtered, predict.movie_id)
+        # TODO: handle possible exception, if neighbors is an empty list!
 
+        # calculate a rating by given knowledge
+        rating = users[predict.user_id].avg_rating + calc_prediction(neighbors, filtered, predict.movie_id)
+
+        # add prediction to list of predictions
         predictions.append(Rating(predict.user_id, predict.movie_id, rating))
+
+    for predict in predictions:
+        print(predict.to_string())
 
     return predictions
