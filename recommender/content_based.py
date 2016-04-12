@@ -10,11 +10,10 @@ def build_users(ratings: [Rating]):
     users = {}
 
     for rating in ratings:
-        if not (users.has_key(rating.user_id)):
+
+        if rating.user_id not in users:
             users[rating.user_id] = User(rating.user_id)
         users.get(rating.user_id).add_rating(rating.movie_id, rating)
-
-
 
     # TODO: fill dict users with key-value pairs of user_id and the user object with its ratings
     # goal: user should later be accessible by its ID
@@ -75,10 +74,19 @@ def nearest_neighbors(user_similarities, k):
     return OrderedDict(islice(sorted_user_sims.iteritems(), k))
 
 
-def calc_prediction(neighbors, filtered):
+def calc_prediction(neighbors, filtered, movie_id):
     # TODO: calculate the rating by given information about similarities
 
-    return 0
+    denominator = 0
+    numerator = 0
+
+    for k,v in neighbors:
+        for user in filtered:
+            if k == user.user_id:
+                numerator += v * (user.get_rating(movie_id) - user.avg_rating)
+                denominator += v
+
+    return numerator / denominator
 
 
 def recommend(ratings: [Rating], predicts: [Predict]):
@@ -103,7 +111,7 @@ def recommend(ratings: [Rating], predicts: [Predict]):
         neighbors = nearest_neighbors(similarities, k)
 
         # calculate a rating by given knowledge
-        rating = (neighbors, filtered)
+        rating = users[predict.user_id].get_rating(predict.movie_id) + calc_prediction(neighbors, filtered, predict.movie_id)
 
         predictions.append(Rating(predict.user_id, predict.movie_id, rating))
 
