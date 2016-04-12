@@ -5,4 +5,4 @@ class Rating:
         self.rating = rating
 
     def to_string(self):
-        return 'userID: ' + self.user_id + ' movieID: ' + self.movie_id + ' rating: ' + self.rating
+        return 'userID: ' + str(self.user_id) + ' movieID: ' + str(self.movie_id) + ' rating: ' + str(self.rating)

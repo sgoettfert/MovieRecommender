@@ -17,7 +17,7 @@ def parse_line_rating(params):
 
 # read a file with ratings and return list of parsed Rating entities
 def read_file_ratings(filename):
-    entities = [Rating]
+    entities = []
     malformed = 0
 
     with open(filename, newline='') as csvfile:
@@ -31,8 +31,10 @@ def read_file_ratings(filename):
             else:
                 malformed += 1
 
-    print('Read ' + str(len(entities)) + ' lines')
+    print('Read ' + str(len(entities) - 1) + ' lines')
     print('Encountered ' + str(malformed) + ' malformed lines')
+
+    print(len(entities))
 
     return entities
 
@@ -47,7 +49,7 @@ def parse_line_predict(params):
 
 # read a file with predicts and return list of parsed Predict entities
 def read_file_predicts(filename):
-    entities = [Predict]
+    entities = []
     malformed = 0
 
     with open(filename, newline='') as csvfile:
@@ -61,7 +63,7 @@ def read_file_predicts(filename):
             else:
                 malformed += 1
 
-    print('Read ' + str(len(entities)) + ' lines')
+    print('Read ' + str(len(entities) - 1) + ' lines')
     print('Encountered ' + str(malformed) + ' malformed lines')
 
     return entities
