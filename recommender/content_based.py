@@ -2,10 +2,10 @@ from entities.predict import Predict
 from entities.rating import Rating
 from entities.user import User
 from scipy.stats.stats import pearsonr
-from collections import OrderedDict
-from itertools import *
 
+import math
 import operator
+
 import scipy as sc
 import numpy as np
 
@@ -45,6 +45,7 @@ def calc_similarity(user_a: User, user_b: User):
                 ratings_a.append(user_a.ratings[ratingA])
                 ratings_b.append(user_b.ratings[ratingA])
 
+
     # omit the p-value which would be at position 1 from result of pearsonr()
     return pearsonr(sc.array(ratings_a).astype(np.float), sc.array(ratings_b).astype(np.float))[0]
 
@@ -53,7 +54,11 @@ def calc_similarities(users: [User], user: User):
     similarities = {}
 
     for u in users:
-        similarities[u.user_id] = calc_similarity(u, user)
+        sim = calc_similarity(u, user)
+
+        # sometimes, some strange runtime errors happen - ignore them
+        if not math.isnan(sim):
+            similarities[u.user_id] = sim
 
     return similarities
 
@@ -77,14 +82,14 @@ def calc_prediction(neighbors, filtered, movie_id):
     return numerator / denominator
 
 
-def recommend(ratings: [Rating], predicts: [Predict]):
-
+def recommend(ratings: [Rating], predicts: [Predict], k):
     # value for neighbours
-    k = 100
     predictions = []
 
     # build user objects from bare ratings
     users = build_users(ratings)
+
+    print("Start calculation of content based ratings")
 
     # predict rating for each user-movie-pair
     for predict in predicts:
@@ -98,15 +103,20 @@ def recommend(ratings: [Rating], predicts: [Predict]):
         # get k nearest neighbors
         neighbors = nearest_neighbors(similarities, k)
 
-        # TODO: handle possible exception, if neighbors is an empty list!
+        if 0 < len(neighbors):
+            # calculate a rating by given knowledge
+            rating = users[predict.user_id].avg_rating + calc_prediction(neighbors, filtered, predict.movie_id)
 
-        # calculate a rating by given knowledge
-        rating = users[predict.user_id].avg_rating + calc_prediction(neighbors, filtered, predict.movie_id)
+            # add prediction to list of predictions
+            predictions.append(Rating(predict.user_id, predict.movie_id, rating))
 
-        # add prediction to list of predictions
-        predictions.append(Rating(predict.user_id, predict.movie_id, rating))
+            print("Added Rating of " + str(rating) + " for User " + str(predict.user_id) + \
+                  " with Movie " + str(predict.movie_id))
 
-    for predict in predictions:
-        print(predict.to_string())
+        else:
+            predictions.append(Rating(predict.user_id, predict.movie_id, users[predict.user_id].avg_rating))
+            print("Added default Rating for User " + str(predict.user_id) + " with Movie " + str(predict.movie_id))
+
+    print("Finished calculation of content based ratings")
 
     return predictions
